@@ -1,0 +1,5 @@
+/cmake_build
+/__*.vim
+/__*.cpp
+*.swp
+
