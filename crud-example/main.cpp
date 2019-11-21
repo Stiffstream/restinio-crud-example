@@ -55,6 +55,17 @@ auto make_router(
 				return restinio::request_accepted();
 			});
 
+	router->http_get("/all/v1/pets/batch-upload-form",
+			[&queue, &processor](const auto & req, const auto &) {
+				queue.push(
+					task_t{
+						[req, &processor] {
+							processor.on_make_batch_upload_form(req);
+						}
+					});
+				return restinio::request_accepted();
+			});
+
 	router->http_get(R"--(/all/v1/pets/:id(\d+))--",
 			[&queue, &processor](const auto & req, const auto & params) {
 				const auto id = restinio::cast_to<pet_id_t>(params["id"]);

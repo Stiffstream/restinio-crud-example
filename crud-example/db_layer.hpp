@@ -33,6 +33,9 @@ public:
 	pet_id_t
 	create_new_pet(const model::pet_without_id_t & pet);
 
+	model::bunch_of_pet_ids_t
+	create_bunch_of_pets(const model::bunch_of_pets_without_id_t & pets);
+
 	model::all_pets_t
 	get_all_pets();
 

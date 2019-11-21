@@ -75,6 +75,28 @@ struct all_pets_t
 	}
 };
 
+struct bunch_of_pets_without_id_t
+{
+	std::vector<pet_without_id_t> m_pets;
+
+	template<typename Json_Io>
+	void json_io(Json_Io & io)
+	{
+		io & json_dto::mandatory("pets", m_pets);
+	}
+};
+
+struct bunch_of_pet_ids_t
+{
+	std::vector<pet_id_t> m_ids;
+
+	template<typename Json_Io>
+	void json_io(Json_Io & io)
+	{
+		io & json_dto::mandatory("ids", m_ids);
+	}
+};
+
 } /* namespace model */
 
 } /* namespace crud_example */

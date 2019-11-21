@@ -38,11 +38,18 @@ public:
 		const restinio::request_handle_t & req,
 		pet_id_t pet_id);
 
+	void
+	on_make_batch_upload_form(
+		const restinio::request_handle_t & req);
+
 private:
 	db_layer_t & m_db;
 
 	model::pet_identity_t
 	create_new_pet(const restinio::request_handle_t & req);
+
+	model::bunch_of_pet_ids_t
+	batch_create_new_pets(const restinio::request_handle_t & req);
 
 	model::all_pets_t
 	get_all_pets();

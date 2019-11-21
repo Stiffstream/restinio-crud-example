@@ -63,6 +63,39 @@ db_layer_t::create_new_pet(const model::pet_without_id_t & pet)
 	return m_last_insert_rowid_stmt.getColumn(0);
 }
 
+model::bunch_of_pet_ids_t
+db_layer_t::create_bunch_of_pets(
+	const model::bunch_of_pets_without_id_t & pets)
+{
+	model::bunch_of_pet_ids_t result;
+
+	std::lock_guard<std::mutex> lock{m_lock};
+
+	SQLite::Transaction trx{m_db};
+
+	for(const auto & current : pets.m_pets)
+	{
+		m_create_new_stmt.reset();
+		m_create_new_stmt.clearBindings();
+
+		m_create_new_stmt.bindNoCopy(":name", current.m_data.m_name);
+		m_create_new_stmt.bindNoCopy(":type", current.m_data.m_type);
+		m_create_new_stmt.bindNoCopy(":owner", current.m_data.m_owner);
+		m_create_new_stmt.bindNoCopy(":picture", current.m_data.m_picture);
+
+		m_create_new_stmt.exec();
+
+		m_last_insert_rowid_stmt.reset();
+		m_last_insert_rowid_stmt.executeStep();
+
+		result.m_ids.push_back(m_last_insert_rowid_stmt.getColumn(0));
+	}
+
+	trx.commit();
+
+	return result;
+}
+
 model::all_pets_t
 db_layer_t::get_all_pets()
 {

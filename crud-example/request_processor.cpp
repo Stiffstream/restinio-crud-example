@@ -1,5 +1,8 @@
 #include "request_processor.hpp"
 
+#include <restinio/helpers/http_field_parsers/content-type.hpp>
+#include <restinio/helpers/file_upload.hpp>
+
 #include <fmt/format.h>
 
 #include <stdexcept>
@@ -14,6 +17,7 @@ const int unknow_error = -1;
 const int json_dto_error = 1;
 const int sqlite_error = 2;
 const int invalid_pet_id = 3;
+const int invalid_request = 4;
 
 } /* namespace errors */
 
@@ -135,6 +139,50 @@ wrap_business_logic_action(F && functor)
 	}
 }
 
+enum class create_new_mode_t
+{
+	single,
+	batch
+};
+
+restinio::expected_t<create_new_mode_t, request_processing_failure_t>
+detect_create_new_mode(
+	const restinio::request_handle_t & req)
+{
+	const auto unexpected = [](const char * msg) {
+		return restinio::make_unexpected(request_processing_failure_t{
+				restinio::status_bad_request(),
+				failure_description_t{errors::invalid_request, msg}
+			});
+	};
+
+	// Content-Type HTTP-field should be present.
+	const auto content_type_raw = req->header().opt_value_of(
+			restinio::http_field::content_type);
+	if(!content_type_raw)
+		return unexpected("Content-Type HTTP-field is absent");
+
+	// Content-Type should have right format.
+	namespace hfp = restinio::http_field_parsers;
+	const auto content_type = hfp::content_type_value_t::try_parse(*content_type_raw);
+	if(!content_type)
+		return unexpected("unable to parse Content-Type HTTP-field");
+
+	// If Content-Type is "application/json" then we assume that it is
+	// a request for addition of single pet.
+	if("application" == content_type->media_type.type &&
+			"json" == content_type->media_type.subtype)
+		return create_new_mode_t::single;
+
+	// If Content-Type if "multipart/form-data" then we assume that it is
+	// a request for batch addition of new pets.
+	if("multipart" == content_type->media_type.type &&
+			"form-data" == content_type->media_type.subtype)
+		return create_new_mode_t::batch;
+
+	return unexpected("unsupported value of Content-Type");
+}
+
 } /* namespace anonymous */
 
 request_processor_t::request_processor_t(db_layer_t & db)
@@ -146,7 +194,29 @@ void
 request_processor_t::on_create_new_pet(
 	const restinio::request_handle_t & req)
 {
-	wrap_request_processing(req, [&] { return create_new_pet(req); });
+	auto mode = detect_create_new_mode(req);
+	if(mode)
+	{
+		switch(*mode)
+		{
+		case create_new_mode_t::single:
+			wrap_request_processing(req, [&] { return create_new_pet(req); });
+		break;
+
+		case create_new_mode_t::batch:
+			wrap_request_processing(req, [&] { return batch_create_new_pets(req); });
+		break;
+		}
+	}
+	else
+	{
+		const auto & error = mode.error();
+		req->create_response(error.response_status())
+			.append_header_date_field()
+			.append_header(restinio::http_field::content_type, "application/json")
+			.set_body(json_dto::to_json(error.failure_description()))
+			.done();
+	}
 }
 
 void
@@ -180,6 +250,34 @@ request_processor_t::on_delete_specific_pet(
 	wrap_request_processing(req, [&] { return delete_specific_pet(pet_id); });
 }
 
+void
+request_processor_t::on_make_batch_upload_form(
+	const restinio::request_handle_t & req)
+{
+	req->create_response()
+		.append_header_date_field()
+		.append_header(restinio::http_field::content_type, "text/html; charset=utf-8")
+		.set_body(
+R"---(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Select file with batch info of new pets</title>
+</head>
+<body>
+<p>Please select file to be uploaded to server.</p>
+<form method="post" action="http://localhost:8080/all/v1/pets" enctype="multipart/form-data">
+    <p><input type="file" name="file" id="file"></p>
+    <p><button type="submit">Submit</button></p>
+</form>
+</body>
+</html>
+)---"
+		)
+		.done();
+}
+
 model::pet_identity_t
 request_processor_t::create_new_pet(
 	const restinio::request_handle_t & req)
@@ -189,6 +287,44 @@ request_processor_t::create_new_pet(
 				m_db.create_new_pet(
 						json_dto::from_json<model::pet_without_id_t>(req->body()))
 			};
+		});
+}
+
+model::bunch_of_pet_ids_t
+request_processor_t::batch_create_new_pets(
+	const restinio::request_handle_t & req)
+{
+	using namespace restinio::file_upload;
+
+	return wrap_business_logic_action([&]() {
+			// Content of file with new pets should be found in
+			// the request's body.
+			std::string uploaded_content;
+			const auto result = enumerate_parts_with_files(*req,
+				[this, &uploaded_content](part_description_t part) {
+					if("file" == part.name)
+					{
+						uploaded_content.assign(part.body.data(), part.body.size());
+						return handling_result_t::stop_enumeration;
+					}
+					else
+						return handling_result_t::continue_enumeration;
+				});
+
+			if(!result || uploaded_content.empty())
+				// There is no uploaded file or request's body has invalid format.
+				throw request_processing_failure_t(
+						restinio::status_bad_request(),
+						failure_description_t{
+								errors::invalid_request,
+								"no file with new pets found"
+						});
+
+			// The content of uploaded file should be parsed.
+			const auto pets = json_dto::from_json<model::bunch_of_pets_without_id_t>(
+					uploaded_content);
+
+			return m_db.create_bunch_of_pets(pets);
 		});
 }
 
