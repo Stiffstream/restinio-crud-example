@@ -48,7 +48,7 @@ Just launch `crud_example` executable. The DB file (`pets.db3`) will be created 
 
 To create a new pet in the DB prepare a .json file like that:
 
-```json
+```js
 {"name":"Bunny", "type":"dog", "owner":"John Smith", "picture":"bunny.jpg"}
 ```
 
@@ -85,3 +85,17 @@ To remove a particular pet from the DB issue the following command:
 curl -X DELETE http://localhost:8080/all/v1/pets/<ID>
 ```
 Where `ID` is a numeric identity of pet to remove.
+
+To create a bunch of pets at once it is necessary to prepare a .json file like that:
+```js
+{"pets": [
+    {"name":"Bunny", "type":"dog", "owner":"John Smith", "picture":"bunny.jpg"}
+    ,{"name":"Baff", "type":"dog", "owner":"John Smith", "picture":"baff.jpg"}
+    ,{"name":"Princess", "type":"cat", "owner":"John Smith", "picture":"princess.jpg"}
+  ]
+}
+```
+Then access the URL `http://localhost:8080/all/v1/pets/batch-upload-form` in a brawser: a form for selection of .json file will be returned. The .json file should be selected and submitted to the server by hitting "Submit" button on that form. New pets would be created and JSON like that will be returned in the response:
+```js
+{"ids":[7,8,9]}
+```
