@@ -44,3 +44,44 @@ cmake --build .
 
 Just launch `crud_example` executable. The DB file (`pets.db3`) will be created in the current path.
 
+## A brief reminder of how to try
+
+To create a new pet in the DB prepare a .json file like that:
+
+```json
+{"name":"Bunny", "type":"dog", "owner":"John Smith", "picture":"bunny.jpg"}
+```
+
+then issue the following command:
+
+```sh
+curl -d @new_pet.json -H "Content-Type: application/json" -X POST http://localhost:8080/all/v1/pets
+```
+
+To query a particular pet just issue the following command:
+
+```sh
+curl http://localhost:8080/all/v1/pets/<ID>
+```
+Where `ID` is a numeric identity of pet to retrive. For example:
+```sh
+curl http://localhost:8080/all/v1/pets/2
+```
+
+To query info about all pets in the database:
+
+```sh
+curl http://localhost:8080/all/v1/pets
+```
+
+To change the info about a particular pet prepare a .json file (the same way as for a new pet) and issue the following command:
+```sh
+curl -d @new_pet.json -H "Content-Type: application/json" -X PATCH http://localhost:8080/all/v1/pets/<ID>
+```
+Where `ID` is a numeric identity of pet to update.
+
+To remove a particular pet from the DB issue the following command:
+```sh
+curl -X DELETE http://localhost:8080/all/v1/pets/<ID>
+```
+Where `ID` is a numeric identity of pet to remove.
