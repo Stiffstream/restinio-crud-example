@@ -1,0 +1,6 @@
+{"pets": [
+    {"name":"Bunny", "type":"dog", "owner":"John Smith", "picture":"bunny.jpg"}
+    ,{"name":"Baff", "type":"dog", "owner":"John Smith", "picture":"baff.jpg"}
+    ,{"name":"Princess", "type":"cat", "owner":"John Smith", "picture":"princess.jpg"}
+  ]
+}
