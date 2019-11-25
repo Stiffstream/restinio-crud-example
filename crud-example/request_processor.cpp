@@ -299,12 +299,12 @@ request_processor_t::batch_create_new_pets(
 	return wrap_business_logic_action([&]() {
 			// Content of file with new pets should be found in
 			// the request's body.
-			std::string uploaded_content;
+			restinio::string_view_t uploaded_content;
 			const auto result = enumerate_parts_with_files(*req,
 				[this, &uploaded_content](part_description_t part) {
 					if("file" == part.name)
 					{
-						uploaded_content.assign(part.body.data(), part.body.size());
+						uploaded_content = part.body;
 						return handling_result_t::stop_enumeration;
 					}
 					else
@@ -322,7 +322,8 @@ request_processor_t::batch_create_new_pets(
 
 			// The content of uploaded file should be parsed.
 			const auto pets = json_dto::from_json<model::bunch_of_pets_without_id_t>(
-					uploaded_content);
+					json_dto::make_string_ref(
+							uploaded_content.data(), uploaded_content.size()));
 
 			return m_db.create_bunch_of_pets(pets);
 		});
