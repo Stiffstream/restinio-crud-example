@@ -299,6 +299,11 @@ request_processor_t::batch_create_new_pets(
 	return wrap_business_logic_action([&]() {
 			// Content of file with new pets should be found in
 			// the request's body.
+			//
+			// NOTE: it's safe to store reference to uploaded file's content
+			// as string_view because uploaded_content won't outlive the
+			// request object with the actual uploaded data.
+			//
 			restinio::string_view_t uploaded_content;
 			const auto result = enumerate_parts_with_files(*req,
 				[this, &uploaded_content](part_description_t part) {
