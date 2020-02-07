@@ -41,8 +41,8 @@ struct failure_description_t
 // NOTE: this error is related to some business-logic problem.
 class request_processing_failure_t : public std::runtime_error
 {
-	const restinio::http_status_line_t m_response_status;
-	const failure_description_t m_failure_description;
+	restinio::http_status_line_t m_response_status;
+	failure_description_t m_failure_description;
 
 public:
 	request_processing_failure_t(
